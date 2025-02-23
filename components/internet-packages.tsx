@@ -1,41 +1,111 @@
+"use client"
+
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
-const packages = [
-  {
-    name: "Basic",
-    data: "5GB",
-    validity: "30 days",
-    price: "¢50.00",
-    features: ["4G LTE", "No Speed Cap", "24/7 Support"],
-    popular: false,
-  },
-  {
-    name: "Standard",
-    data: "15GB",
-    validity: "30 days",
-    price: "¢100.00",
-    features: ["4G LTE", "No Speed Cap", "24/7 Support", "Roll Over Data"],
-    popular: true,
-  },
-  {
-    name: "Premium",
-    data: "Unlimited",
-    validity: "30 days",
-    price: "¢200.00",
-    features: ["5G Ready", "No Speed Cap", "24/7 Priority Support", "Roll Over Data", "Multi-device"],
-    popular: false,
-  },
-]
+const carriers = ["MTN", "AIRTELTIGO", "TELECEL"]
+
+const packagesByCarrier = {
+  MTN: [
+    {
+      name: "MTN Basic",
+      data: "5GB",
+      validity: "60 days",
+      price: "GHS 50.00",
+      popular: false,
+    },
+    {
+      name: "MTN Standard",
+      data: "15GB",
+      validity: "60 days",
+      price: "GHS 100.00",
+      popular: true,
+    },
+    {
+      name: "MTN Premium",
+      data: "Unlimited",
+      validity: "60 days",
+      price: "GHS 200.00",
+      popular: false,
+    },
+  ],
+  AIRTELTIGO: [
+    {
+      name: "AirtelTigo Basic",
+      data: "4GB",
+      validity: "60 days",
+      price: "GHS 45.00",
+      popular: false,
+    },
+    {
+      name: "AirtelTigo Standard",
+      data: "10GB",
+      validity: "60 days",
+      price: "GHS 90.00",
+      popular: true,
+    },
+    {
+      name: "AirtelTigo Premium",
+      data: "Unlimited",
+      validity: "60 days",
+      price: "GHS 180.00",
+      popular: false,
+    },
+  ],
+  TELECEL: [
+    {
+      name: "Telecel Basic",
+      data: "3GB",
+      validity: "30 days",
+      price: "GHS 40.00",
+      popular: false,
+    },
+    {
+      name: "Telecel Standard",
+      data: "8GB",
+      validity: "30 days",
+      price: "GHS 80.00",
+      popular: false,
+    },
+    {
+      name: "Telecel Premium",
+      data: "Unlimited",
+      validity: "30 days",
+      price: "GHS 160.00",
+      popular: true,
+    },
+  ],
+}
 
 export function InternetPackages() {
+  const [selectedCarrier, setSelectedCarrier] = useState<string>("MTN")
+
+  // Get packages based on selected carrier
+  const packages = packagesByCarrier[selectedCarrier]
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-1">
         <h2 className="text-2xl font-semibold tracking-tight">Internet Packages</h2>
         <p className="text-muted-foreground">Choose the perfect plan for your needs</p>
       </div>
+
+      {/* Carrier Selection */}
+      <div className="flex space-x-4">
+        {carriers.map((carrier) => (
+          <Button
+            key={carrier}
+            variant={carrier === selectedCarrier ? "default" : "outline"}
+            onClick={() => setSelectedCarrier(carrier)}
+          >
+            {carrier}
+          </Button>
+        ))}
+      </div>
+
+      {/* Packages Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {packages.map((pkg) => (
           <Card key={pkg.name} className="relative">
@@ -44,7 +114,7 @@ export function InternetPackages() {
               <CardTitle>{pkg.name}</CardTitle>
               <div className="flex items-baseline gap-1">
                 <span className="text-3xl font-bold">{pkg.price}</span>
-                <span className="text-muted-foreground">/ month</span>
+                <span className="text-muted-foreground">/ prepaid</span>
               </div>
             </CardHeader>
             <CardContent>
@@ -57,16 +127,6 @@ export function InternetPackages() {
                   <div className="font-medium">{pkg.validity}</div>
                   <div className="text-sm text-muted-foreground">Validity</div>
                 </div>
-                <ul className="space-y-2 text-sm">
-                  {pkg.features.map((feature) => (
-                    <li key={feature} className="flex items-center">
-                      <svg className="mr-2 h-4 w-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
                 <Button className="w-full">Purchase Package</Button>
               </div>
             </CardContent>

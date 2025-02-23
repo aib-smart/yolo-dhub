@@ -133,7 +133,7 @@ export function AuthPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Package2 className="h-6 w-6" />
-              <CardTitle className="text-2xl">AIB.Smart DataHub</CardTitle>
+              <CardTitle className="text-2xl">YOLO DataHub</CardTitle>
             </div>
             <div className="flex items-center space-x-2">
               <Label htmlFor="admin-mode" className="text-sm">

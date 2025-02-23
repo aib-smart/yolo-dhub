@@ -38,13 +38,13 @@ export function AfaRegistration() {
   return (
     <div className="grid gap-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">AFA Registration</h2>
+        <h2 className="text-xl font-semibold tracking-tight">AFA Registration</h2>
         <p className="text-muted-foreground">Register a new AFA account</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
+          <CardTitle className="text-lg font-semibold tracking-tight">Personal Information</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>

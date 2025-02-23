@@ -24,7 +24,7 @@ const orders: Order[] = [
     customer: "John Doe",
     product: "5GB Data Bundle",
     amount: 50.0,
-    date: "2024-02-21",
+    date: "2025-02-19",
     status: "completed",
   },
   {
@@ -32,7 +32,7 @@ const orders: Order[] = [
     customer: "Jane Smith",
     product: "10GB Data Bundle",
     amount: 100.0,
-    date: "2024-02-21",
+    date: "2025-02-19",
     status: "pending",
   },
   {

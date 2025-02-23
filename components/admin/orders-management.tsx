@@ -1,156 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Search, Filter, Download, MoreVertical } from "lucide-react"
+import { Search, Filter, Download, MoreVertical, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { DatePickerWithRange } from "@/components/ui/date-range-picker"
 import { addDays } from "date-fns"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-
-interface Order {
-  id: string
-  agentId: string
-  agentName: string
-  customerPhone: string
-  product: string
-  amount: number
-  date: string
-  status: "completed" | "pending" | "cancelled" | "failed"
-  paymentMethod?: string
-  notes?: string
-  timeline?: {
-    status: string
-    timestamp: string
-    description: string
-  }[]
-}
-
-const orders: Order[] = [
-  {
-    id: "ORD001",
-    agentId: "AGT001",
-    agentName: "John Doe",
-    customerPhone: "+233 54 123 4567",
-    product: "5GB Data Bundle",
-    amount: 50.0,
-    date: "2024-02-21",
-    status: "completed",
-    paymentMethod: "Wallet Balance",
-    notes: "Customer requested immediate activation",
-    timeline: [
-      {
-        status: "created",
-        timestamp: "2024-02-21 10:30:00",
-        description: "Order created by agent",
-      },
-      {
-        status: "payment_confirmed",
-        timestamp: "2024-02-21 10:30:05",
-        description: "Payment confirmed from wallet balance",
-      },
-      {
-        status: "processing",
-        timestamp: "2024-02-21 10:30:10",
-        description: "Processing data bundle activation",
-      },
-      {
-        status: "completed",
-        timestamp: "2024-02-21 10:30:15",
-        description: "Data bundle activated successfully",
-      },
-    ],
-  },
-  {
-    id: "ORD002",
-    agentId: "AGT002",
-    agentName: "Jane Smith",
-    customerPhone: "+233 55 123 4567",
-    product: "10GB Data Bundle",
-    amount: 100.0,
-    date: "2024-02-21",
-    status: "pending",
-    paymentMethod: "Mobile Money",
-    notes: "Customer wants the bundle activated by evening",
-    timeline: [
-      {
-        status: "created",
-        timestamp: "2024-02-21 09:00:00",
-        description: "Order created by agent",
-      },
-      {
-        status: "payment_pending",
-        timestamp: "2024-02-21 09:05:00",
-        description: "Payment pending from Mobile Money",
-      },
-    ],
-  },
-  {
-    id: "ORD003",
-    agentId: "AGT001",
-    agentName: "John Doe",
-    customerPhone: "+233 24 123 4567",
-    product: "15GB Data Bundle",
-    amount: 150.0,
-    date: "2024-02-20",
-    status: "failed",
-    paymentMethod: "Wallet Balance",
-    notes: "Insufficient balance in customer's wallet",
-    timeline: [
-      {
-        status: "created",
-        timestamp: "2024-02-20 14:20:00",
-        description: "Order created by agent",
-      },
-      {
-        status: "payment_failed",
-        timestamp: "2024-02-20 14:20:05",
-        description: "Payment failed due to insufficient balance",
-      },
-    ],
-  },
-  {
-    id: "ORD004",
-    agentId: "AGT003",
-    agentName: "Bob Wilson",
-    customerPhone: "+233 20 123 4567",
-    product: "Unlimited Data Bundle",
-    amount: 200.0,
-    date: "2024-02-20",
-    status: "cancelled",
-    paymentMethod: "Bank Transfer",
-    notes: "Customer cancelled order due to long processing time",
-    timeline: [
-      {
-        status: "created",
-        timestamp: "2024-02-20 16:00:00",
-        description: "Order created by agent",
-      },
-      {
-        status: "payment_pending",
-        timestamp: "2024-02-20 16:05:00",
-        description: "Payment pending from Bank Transfer",
-      },
-      {
-        status: "cancelled",
-        timestamp: "2024-02-20 16:10:00",
-        description: "Order cancelled by customer",
-      },
-    ],
-  },
-]
+import { Checkbox } from "@/components/ui/checkbox"
+import { useToast } from "@/components/ui/use-toast"
+import * as XLSX from "xlsx"
+import { type Order, subscribeToOrders, markOrdersAsExported } from "@/lib/services/orders"
+import { initializeNotifications, setupNotificationListener } from "@/lib/services/notifications"
 
 const statusColors = {
   completed: "bg-emerald-500",
   pending: "bg-yellow-500",
   cancelled: "bg-gray-500",
   failed: "bg-red-500",
+  review: "bg-blue-500",
 }
 
 export function OrdersManagement() {
@@ -162,8 +36,55 @@ export function OrdersManagement() {
   })
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([])
+  const [isExporting, setIsExporting] = useState(false)
+  const { toast } = useToast()
+  const [ordersData, setOrdersData] = useState<Order[]>([])
 
-  const filteredOrders = orders.filter((order) => {
+  useEffect(() => {
+    let unsubscribe: () => void
+
+    const initializeComponent = async () => {
+      try {
+        // Initialize notifications
+        if (typeof window !== "undefined") {
+          await initializeNotifications("admin") // Pass admin ID
+          setupNotificationListener()
+        }
+
+        // Subscribe to orders
+        unsubscribe = subscribeToOrders((orders) => {
+          setOrdersData(orders)
+
+          // Check for new orders and show toast
+          const newOrders = orders.filter((order) => order.status === "review")
+          if (newOrders.length > 0) {
+            toast({
+              title: "New Orders Received",
+              description: `You have ${newOrders.length} new order(s) to review`,
+            })
+          }
+        })
+      } catch (error) {
+        console.error("Error initializing component:", error)
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load orders. Please refresh the page.",
+        })
+      }
+    }
+
+    initializeComponent()
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
+    }
+  }, [toast])
+
+  const filteredOrders = ordersData.filter((order) => {
     const matchesSearch =
       order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.agentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -172,9 +93,100 @@ export function OrdersManagement() {
     return matchesSearch && matchesStatus
   })
 
-  const handleExport = () => {
-    // Implement CSV export functionality
-    console.log("Exporting orders...")
+  const handleSelectOrder = (orderId: string) => {
+    setSelectedOrders((prev) => (prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId]))
+  }
+
+  const handleSelectAll = () => {
+    if (selectedOrders.length === filteredOrders.length) {
+      setSelectedOrders([])
+    } else {
+      setSelectedOrders(filteredOrders.map((order) => order.id))
+    }
+  }
+
+  const exportToExcel = async () => {
+    if (selectedOrders.length === 0) {
+      toast({
+        title: "No Orders Selected",
+        description: "Please select orders to export",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsExporting(true)
+
+    try {
+      // Get selected orders data
+      const ordersToExport = ordersData
+        .filter((order) => selectedOrders.includes(order.id))
+        .map((order) => ({
+          "Order ID": order.id,
+          "Agent ID": order.agentId,
+          "Agent Name": order.agentName,
+          "Customer Phone": order.customerPhone,
+          Product: order.product,
+          Amount: `₵${order.amount.toFixed(2)}`,
+          Date: order.date,
+          Status: order.status.toUpperCase(),
+          "Payment Method": order.paymentMethod || "",
+          Notes: order.notes || "",
+        }))
+
+      // Create the worksheet
+      const ws = XLSX.utils.json_to_sheet(ordersToExport)
+
+      // Add column widths
+      ws["!cols"] = [
+        { wch: 10 }, // Order ID
+        { wch: 10 }, // Agent ID
+        { wch: 20 }, // Agent Name
+        { wch: 15 }, // Customer Phone
+        { wch: 20 }, // Product
+        { wch: 10 }, // Amount
+        { wch: 12 }, // Date
+        { wch: 10 }, // Status
+        { wch: 15 }, // Payment Method
+        { wch: 30 }, // Notes
+      ]
+
+      // Create workbook and append worksheet
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Orders")
+
+      // Generate blob
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
+      const blob = new Blob([wbout], { type: "application/octet-stream" })
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", `orders_export_${new Date().toISOString().replace(/[:.]/g, "-")}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      // Update orders in Firestore
+      await markOrdersAsExported(selectedOrders)
+
+      setSelectedOrders([])
+
+      toast({
+        title: "Export Successful",
+        description: `${selectedOrders.length} orders have been exported and marked as pending`,
+      })
+    } catch (error) {
+      console.error("Export error:", error)
+      toast({
+        title: "Export Failed",
+        description: "An error occurred while exporting orders",
+        variant: "destructive",
+      })
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleViewDetails = (order: Order) => {
@@ -189,9 +201,18 @@ export function OrdersManagement() {
           <h2 className="text-2xl font-semibold tracking-tight">Orders Management</h2>
           <p className="text-muted-foreground">View and manage all orders in the system</p>
         </div>
-        <Button onClick={handleExport}>
-          <Download className="h-4 w-4 mr-2" />
-          Export Orders
+        <Button onClick={exportToExcel} disabled={isExporting || selectedOrders.length === 0}>
+          {isExporting ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Exporting...
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4 mr-2" />
+              Export Selected
+            </>
+          )}
         </Button>
       </div>
 
@@ -214,8 +235,9 @@ export function OrdersManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="review">Under Review</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
                 </SelectContent>
@@ -234,6 +256,12 @@ export function OrdersManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={filteredOrders.length > 0 && selectedOrders.length === filteredOrders.length}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead>Order ID</TableHead>
                   <TableHead>Agent</TableHead>
                   <TableHead>Customer</TableHead>
@@ -246,8 +274,24 @@ export function OrdersManagement() {
               </TableHeader>
               <TableBody>
                 {filteredOrders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.id}</TableCell>
+                  <TableRow
+                    key={order.id}
+                    className={cn(order.exported && "bg-muted/50", selectedOrders.includes(order.id) && "bg-muted")}
+                  >
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedOrders.includes(order.id)}
+                        onCheckedChange={() => handleSelectOrder(order.id)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {order.id}
+                      {order.exported && (
+                        <Badge variant="outline" className="ml-2">
+                          Exported
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div>
                         <div className="font-medium">{order.agentName}</div>
@@ -370,6 +414,7 @@ export function OrdersManagement() {
                               event.status === "completed" && "bg-emerald-500",
                               event.status === "processing" && "bg-blue-500",
                               event.status === "created" && "bg-gray-500",
+                              event.status === "review" && "bg-blue-500",
                             )}
                           />
                         </div>

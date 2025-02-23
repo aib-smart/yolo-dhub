@@ -3,34 +3,39 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Wallet, Package, FileSpreadsheet, UserPlus, LogOut, User, ShoppingCart } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { logoutUser } from "@/lib/auth"
+import { useToast } from "@/components/ui/use-toast"
+import { cn } from "@/lib/utils"
+
+import { Wallet, Package, FileSpreadsheet, UserPlus, LogOut, User, ShoppingCart, Menu } from "lucide-react"
+
+// Your sub-pages
 import { InternetPackages } from "./internet-packages"
 import { Wallet as WalletPage } from "./wallet"
 import { AfaRegistration } from "./afa-registration"
 import { RecentTransactions } from "./recent-transactions"
 import { AgentProfile } from "./agent-profile"
 import { Orders } from "./orders"
-import { Button } from "./ui/button"
-import { Sidebar, SidebarContent, SidebarTrigger } from "@/components/ui/sidebar"
-import { logoutUser } from "@/lib/auth"
-import { useToast } from "@/components/ui/use-toast"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { cn } from "@/lib/utils"
+
+interface StatColorMap {
+  [key: string]: string
+}
 
 export function ModernDataPlatform() {
   const [activeTab, setActiveTab] = useState("dashboard")
+  const [sidebarOpen, setSidebarOpen] = useState(false) // toggles sidebar on mobile
   const router = useRouter()
   const { toast } = useToast()
   const [userName, setUserName] = useState("")
 
+  // Check if user is logged in
   useEffect(() => {
-    // Check if user is logged in
     const userStr = localStorage.getItem("user")
     if (!userStr) {
       router.push("/auth")
       return
     }
-
     try {
       const user = JSON.parse(userStr)
       if (user.role !== "agent") {
@@ -52,13 +57,23 @@ export function ModernDataPlatform() {
     router.push("/auth")
   }
 
-  const statsData = {
-    wallet: { value: "¢9.61", label: "Wallet Balance" },
-    sales: { value: "¢3,941.39", label: "Total Sales" },
-    deposited: { value: "¢3,951.00", label: "Total Deposited" },
-    overdraft: { value: "-¢200.00", label: "Overdraft" },
+  // Colors for stat cards
+  const statColors: StatColorMap = {
+    wallet: "bg-[#FFFFFF] bg-opacity-80 backdrop-blur-sm",
+    sales: "bg-[#FFFFFF] bg-opacity-80 backdrop-blur-sm",
+    deposited: "bg-[#FFFFFF] bg-opacity-80 backdrop-blur-sm",
+    overdraft: "bg-[#FFFFFF] bg-opacity-80 backdrop-blur-sm",
   }
 
+  // Stats data
+  const statsData = {
+    wallet: { value: "GHS 428.65", label: "Wallet Balance" },
+    sales: { value: "GHS 3,941.39", label: "Total Sales" },
+    deposited: { value: "GHS 3,951.00", label: "Total Deposited" },
+    overdraft: { value: "-GHS ***", label: "Overdraft" },
+  }
+
+  // Render main content based on activeTab
   const renderMainContent = () => {
     switch (activeTab) {
       case "packages":
@@ -72,20 +87,17 @@ export function ModernDataPlatform() {
       case "orders":
         return <Orders />
       default:
+        // Dashboard
         return (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {Object.entries(statsData).map(([key, { value, label }]) => (
-                <Card key={key} className="backdrop-blur-sm bg-white/50">
+                <Card key={key} className={cn("shadow-md", statColors[key])}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-muted-foreground">{label}</CardTitle>
+                    <CardTitle className="text-sm text-gray-900">{label}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p
-                      className={`text-2xl font-semibold ${
-                        value.includes("-") ? "text-destructive" : "text-emerald-600"
-                      }`}
-                    >
+                    <p className={`text-xl font-semibold ${key === "overdraft" ? "text-[#EE4443]" : "text-[#0FB982]"}`}>
                       {value}
                     </p>
                   </CardContent>
@@ -98,12 +110,25 @@ export function ModernDataPlatform() {
     }
   }
 
-  const NavButton = ({ icon: Icon, label, value }) => (
+  // Reusable nav button
+  const NavButton = ({
+    icon: Icon,
+    label,
+    value,
+  }: {
+    icon: any
+    label: string
+    value: string
+  }) => (
     <button
-      onClick={() => setActiveTab(value)}
-      className={`flex items-center space-x-2 w-full p-3 rounded-lg transition-colors ${
-        activeTab === value ? "bg-gray-900 text-white" : "hover:bg-gray-100"
-      }`}
+      onClick={() => {
+        setActiveTab(value)
+        setSidebarOpen(false) // close sidebar on mobile
+      }}
+      className={cn(
+        "flex items-center space-x-2 w-full p-3 rounded-lg transition-colors",
+        activeTab === value ? "bg-gray-900 text-white" : "hover:bg-gray-100",
+      )}
     >
       <Icon className="h-5 w-5" />
       <span>{label}</span>
@@ -111,74 +136,91 @@ export function ModernDataPlatform() {
   )
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        {/* Top Navigation */}
-        <nav className="bg-white/80 backdrop-blur-lg border-b sticky top-0 z-50">
-          <div className="max-w-screen-2xl mx-auto px-4 flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <SidebarTrigger className="lg:hidden" />
-              <h1 className="text-xl font-semibold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                AIB.Smart DataHub
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button onClick={() => setActiveTab("profile")} className="p-2 hover:bg-gray-100 rounded-full">
-                <User className="h-5 w-5 text-gray-600" />
-              </button>
-              <span className="text-sm font-medium hidden sm:inline-block">{userName}</span>
-            </div>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Top Navigation */}
+      <header className="sticky top-0 z-50 bg-white shadow flex-shrink-0">
+        <div className="mx-auto w-full max-w-screen-2xl px-4 flex justify-between items-center h-16">
+          {/* Left: hamburger + brand */}
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" className="lg:hidden p-2" onClick={() => setSidebarOpen(!sidebarOpen)}>
+              <Menu className="h-5 w-5 text-gray-600" />
+            </Button>
+            <h1 className="text-xl font-bold text-gray-800 ml-4 lg:ml-16">YOLO DataHub</h1>
           </div>
-        </nav>
+          {/* Right: user info */}
+          <div className="flex items-center space-x-4 mr-3 lg:mr-14">
+            <button onClick={() => setActiveTab("profile")} className="p-2 hover:bg-gray-100 rounded-full">
+              <User className="h-5 w-5 text-gray-600" />
+            </button>
+            <span className="text-sm font-medium hidden sm:inline-block">{userName}</span>
+          </div>
+        </div>
+      </header>
 
-        <div className="flex h-[calc(100vh-4rem)]">
-          {/* Sidebar */}
-          <Sidebar defaultCollapsed={false} className="hidden lg:block border-r">
-            <SidebarContent className="py-4 h-full flex flex-col">
-              <nav className="space-y-2 flex-1 px-4">
-                <NavButton icon={Package} label="Dashboard" value="dashboard" />
-                <NavButton icon={FileSpreadsheet} label="Internet Packages" value="packages" />
-                <NavButton icon={Wallet} label="Wallet" value="wallet" />
-                <NavButton icon={ShoppingCart} label="Orders" value="orders" />
-                <NavButton icon={UserPlus} label="AFA Registration" value="afa" />
-              </nav>
-
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-red-600 hover:text-red-600 hover:bg-red-50"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-5 w-5 mr-2" />
-                Logout
-              </Button>
-            </SidebarContent>
-          </Sidebar>
-
-          {/* Main Content */}
-          <main
-            className={cn(
-              "flex-1 overflow-y-auto",
-              // Mobile styles
-              "lg:px-6 lg:py-6", // Desktop padding
-              "pb-24 lg:pb-6", // Account for mobile navigation
-            )}
-          >
-            <div
-              className={cn(
-                "mx-auto",
-                // Mobile styles
-                "px-4 py-4",
-                // Desktop styles
-                "lg:max-w-6xl lg:px-0",
-                // Container styles
-                "w-full",
-              )}
-            >
-              {renderMainContent()}
+      {/* Main Content Wrapper */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Centered Container for sidebar + content */}
+        <div className="mx-auto w-full max-w-screen-2xl relative flex">
+          {/* Desktop Floating Sidebar */}
+          <aside className="hidden lg:block w-64 pt-7 flex-shrink-0 relative">
+            <div className="fixed w-4/4 px-4">
+              <Card className="shadow-lg rounded-lg overflow-hidden">
+                <CardContent className="flex flex-col py-4 h-full">
+                  <nav className="flex-1 space-y-2 px-1">
+                    <NavButton icon={Package} label="Dashboard" value="dashboard" />
+                    <NavButton icon={FileSpreadsheet} label="Internet Packages" value="packages" />
+                    <NavButton icon={Wallet} label="Wallet" value="wallet" />
+                    <NavButton icon={ShoppingCart} label="Orders" value="orders" />
+                    <NavButton icon={UserPlus} label="AFA Registration" value="afa" />
+                  </nav>
+                  <Button
+                    variant="ghost"
+                    className="mt-4 w-full justify-start text-red-600 hover:text-red-600 hover:bg-red-50"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-5 w-5 mr-2" />
+                    Logout
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
+          </aside>
+
+          {/* Main Content Area */}
+          <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 lg:pl-4">
+            <div className="px-4 py-6 w-full max-w-5xl mx-auto">{renderMainContent()}</div>
           </main>
 
-          {/* Mobile Navigation */}
+          {/* Mobile Sidebar (Overlay Drawer) */}
+          {sidebarOpen && (
+            <div className="lg:hidden fixed inset-0 z-50 flex">
+              {/* Sidebar Drawer */}
+              <div
+                className="relative w-64 bg-white shadow-md"
+                onClick={(e) => e.stopPropagation()} // prevent outside click from closing
+              >
+                <div className="p-4 space-y-2 overflow-y-auto h-full">
+                  <NavButton icon={Package} label="Dashboard" value="dashboard" />
+                  <NavButton icon={FileSpreadsheet} label="Internet Packages" value="packages" />
+                  <NavButton icon={Wallet} label="Wallet" value="wallet" />
+                  <NavButton icon={ShoppingCart} label="Orders" value="orders" />
+                  <NavButton icon={UserPlus} label="AFA Registration" value="afa" />
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-red-600 hover:text-red-600 hover:bg-red-50 mt-4"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-5 w-5 mr-2" />
+                    Logout
+                  </Button>
+                </div>
+              </div>
+              {/* Backdrop */}
+              <div className="flex-1 bg-black/50" onClick={() => setSidebarOpen(false)} />
+            </div>
+          )}
+
+          {/* Mobile Bottom Navigation */}
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t z-50 lg:hidden">
             <div className="flex justify-around p-2 items-center h-16 px-4 mx-auto max-w-md">
               <MobileNavButton
@@ -209,18 +251,28 @@ export function ModernDataPlatform() {
           </div>
         </div>
       </div>
-    </SidebarProvider>
+    </div>
   )
 }
 
-// New Mobile Navigation Button Component
-function MobileNavButton({ icon: Icon, label, isActive, onClick }) {
+// Mobile Nav Button
+function MobileNavButton({
+  icon: Icon,
+  label,
+  isActive,
+  onClick,
+}: {
+  icon: any
+  label: string
+  isActive: boolean
+  onClick: () => void
+}) {
   return (
     <button
       onClick={onClick}
       className={cn(
         "flex flex-col items-center justify-center space-y-1 w-16 py-1 rounded-lg transition-colors",
-        isActive ? "text-primary" : "text-muted-foreground",
+        isActive ? "text-blue-600" : "text-gray-500",
       )}
     >
       <Icon className="h-5 w-5" />

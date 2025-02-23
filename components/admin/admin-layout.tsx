@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useEffect } from "react"
+import { useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Sidebar, SidebarContent, SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
@@ -10,6 +9,7 @@ import { Package, Wallet, Users, Settings, LogOut, LayoutDashboard, ShieldCheck,
 import { logoutUser } from "@/lib/auth"
 import { useToast } from "@/components/ui/use-toast"
 import { SidebarProvider } from "@/components/ui/sidebar"
+import { LoadingSkeleton } from "@/components/ui/loading"
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -29,9 +29,10 @@ const SidebarItem = ({ icon: Icon, label, isActive, onClick, className = "" }) =
   </button>
 )
 
-export function AdminLayout({ children, activeTab, setActiveTab }: AdminLayoutProps) {
-  const router = useRouter()
+function AdminLayoutContent({ children, activeTab, setActiveTab }: AdminLayoutProps) {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const { toast } = useToast()
 
   useEffect(() => {
     const tab = searchParams.get("tab")
@@ -39,8 +40,6 @@ export function AdminLayout({ children, activeTab, setActiveTab }: AdminLayoutPr
       setActiveTab(tab)
     }
   }, [searchParams, setActiveTab])
-
-  const { toast } = useToast()
 
   useEffect(() => {
     // Check if user is logged in and is admin
@@ -71,14 +70,14 @@ export function AdminLayout({ children, activeTab, setActiveTab }: AdminLayoutPr
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
         {/* Top Navigation */}
         <nav className="bg-white/80 backdrop-blur-lg border-b sticky top-0 z-50">
           <div className="max-w-screen-2xl mx-auto px-4 flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <SidebarTrigger className="lg:hidden" />
               <h1 className="text-xl font-semibold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                AIB.Smart DataHub Admin
+                YOLO DataHub Admin
               </h1>
             </div>
             <div className="flex items-center space-x-4">
@@ -101,7 +100,7 @@ export function AdminLayout({ children, activeTab, setActiveTab }: AdminLayoutPr
 
         <div className="flex h-[calc(100vh-4rem)]">
           {/* Admin Sidebar */}
-          <Sidebar defaultCollapsed={false} className="hidden lg:block border-r">
+          <Sidebar className="hidden lg:block border-r">
             <SidebarContent className="py-4 h-full flex flex-col">
               <nav className="space-y-2 flex-1">
                 <SidebarItem
@@ -154,8 +153,8 @@ export function AdminLayout({ children, activeTab, setActiveTab }: AdminLayoutPr
           </Sidebar>
 
           {/* Main Content */}
-          <main className="flex-1 overflow-y-auto">
-            <div className="max-w-6xl mx-auto p-4 sm:p-6 pb-20 lg:pb-6">{children}</div>
+          <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
+            <div className="px-4 py-6 lg:px-8 w-full max-w-7xl mx-auto">{children}</div>
           </main>
 
           {/* Mobile Navigation */}
@@ -198,6 +197,15 @@ export function AdminLayout({ children, activeTab, setActiveTab }: AdminLayoutPr
         </div>
       </div>
     </SidebarProvider>
+  )
+}
+
+// Main component with Suspense using the skeleton fallback
+export function AdminLayout({ children, activeTab, setActiveTab }: AdminLayoutProps) {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <AdminLayoutContent children={children} activeTab={activeTab} setActiveTab={setActiveTab} />
+    </Suspense>
   )
 }
 

@@ -7,19 +7,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 const transactions = [
   {
     id: "1",
-    date: "2024-02-21",
+    date: "2025-02-19",
     type: "Credit",
-    amount: "¢500.00",
+    amount: "GHS 500.00",
     status: "Completed",
-    balance: "¢1,500.00",
+    balance: "GHS 1,500.00",
   },
   {
     id: "2",
     date: "2024-02-20",
     type: "Debit",
-    amount: "-¢200.00",
+    amount: "-GHS 200.00",
     status: "Completed",
-    balance: "¢1,000.00",
+    balance: "GHS 1,000.00",
   },
   // Add more transactions as needed
 ]
@@ -38,7 +38,7 @@ export function Wallet() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Available Balance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">¢1,500.00</div>
+            <div className="text-xl font-bold">GHS 1,500.00</div>
           </CardContent>
         </Card>
 
@@ -47,7 +47,7 @@ export function Wallet() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Transactions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">156</div>
+            <div className="text-xl font-bold">156</div>
           </CardContent>
         </Card>
 
@@ -56,7 +56,7 @@ export function Wallet() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Pending Balance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">¢0.00</div>
+            <div className="text-xl font-bold">GHS 0.00</div>
           </CardContent>
         </Card>
       </div>

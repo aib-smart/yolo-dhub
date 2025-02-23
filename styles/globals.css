@@ -1,9 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import "@fontsource/inter"; /* Defaults to weight 400 */
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 @layer utilities {
@@ -92,3 +93,4 @@ body {
     @apply bg-background text-foreground;
   }
 }
+

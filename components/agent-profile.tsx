@@ -4,8 +4,8 @@ import { User, Mail, Phone, MapPin, Calendar, Shield } from "lucide-react"
 
 const agentData = {
   personalInfo: {
-    name: "Iyke Agent",
-    email: "iyke@example.com",
+    name: "YOLO Agent #1",
+    email: "agent-01@yolodhub.com",
     phone: "+233 54 000 0000",
     address: "123 Main Street, Accra",
     joinDate: "August 15, 2023",
@@ -28,14 +28,14 @@ export function AgentProfile() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-1">
-        <h2 className="text-2xl font-semibold tracking-tight">Agent Profile</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Agent Profile</h2>
         <p className="text-muted-foreground">View and manage your profile information</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="bg-white/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
+            <CardTitle className="text-lg font-semibold tracking-tight">Personal Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center space-x-4">
@@ -71,24 +71,24 @@ export function AgentProfile() {
 
         <Card className="bg-white/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>Performance Metrics</CardTitle>
+            <CardTitle className="text-xl font-semibold tracking-tight">Performance Metrics</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Total Transactions</p>
-              <p className="text-2xl font-bold">{agentData.performance.totalTransactions}</p>
+              <p className="text-xl font-bold">{agentData.performance.totalTransactions}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Success Rate</p>
-              <p className="text-2xl font-bold">{agentData.performance.successRate}</p>
+              <p className="text-xl font-bold">{agentData.performance.successRate}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Avg. Response Time</p>
-              <p className="text-2xl font-bold">{agentData.performance.averageResponse}</p>
+              <p className="text-xl font-bold">{agentData.performance.averageResponse}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Monthly Rating</p>
-              <p className="text-2xl font-bold">{agentData.performance.monthlyRating}</p>
+              <p className="text-xl font-bold">{agentData.performance.monthlyRating}</p>
             </div>
           </CardContent>
         </Card>
@@ -96,7 +96,7 @@ export function AgentProfile() {
 
       <Card className="bg-white/50 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle>Verification Documents</CardTitle>
+          <CardTitle className="text-xl font-semibold">Verification Documents</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">

@@ -12,16 +12,16 @@ export interface User {
 export const defaultUsers = [
   {
     id: "1",
-    email: "admin@aibsmart.com",
+    email: "admin@yolodhub.com",
     password: "admin123", // In production, this should be hashed
-    name: "Admin User",
+    name: "YOLO Admin",
     role: "admin" as UserRole,
   },
   {
     id: "2",
-    email: "agent@aibsmart.com",
+    email: "agent@yolodhub.com",
     password: "agent123", // In production, this should be hashed
-    name: "Iyke Agent",
+    name: "YOLO Agent #1",
     role: "agent" as UserRole,
     agentId: "AGT001234",
   },

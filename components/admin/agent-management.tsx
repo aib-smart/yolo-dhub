@@ -29,7 +29,7 @@ const agents: Agent[] = [
     phone: "+233 54 000 0001",
     status: "active",
     registrationDate: "2024-01-15",
-    lastActive: "2024-02-21",
+    lastActive: "2025-02-19",
     transactions: 156,
   },
   {
@@ -39,7 +39,7 @@ const agents: Agent[] = [
     phone: "+233 54 000 0002",
     status: "pending",
     registrationDate: "2024-02-20",
-    lastActive: "2024-02-21",
+    lastActive: "2025-02-19",
     transactions: 0,
   },
   {
@@ -206,14 +206,14 @@ export function AgentManagement() {
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Agent Details</DialogTitle>
+            <DialogTitle className="text-lg font-semibold">Agent Details</DialogTitle>
             <DialogDescription>Detailed information about the agent</DialogDescription>
           </DialogHeader>
           {selectedAgent && (
             <div className="grid gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Personal Information</CardTitle>
+                  <CardTitle className="text-lg font-semibold tracking-tight">Personal Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
