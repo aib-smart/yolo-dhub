@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -11,53 +11,54 @@ import { Search, Filter } from "lucide-react"
 
 interface Order {
   id: string
-  customer: string
+  agentId: string
+  agentName: string
+  customerName: string
+  customerPhone: string
   product: string
   amount: number
   date: string
-  status: "completed" | "pending" | "cancelled"
+  status: "completed" | "pending" | "cancelled" | "review"
+  paymentMethod: string
+  notes: string
+  createdAt: string
+  narration: string
 }
-
-const orders: Order[] = [
-  {
-    id: "ORD001",
-    customer: "John Doe",
-    product: "5GB Data Bundle",
-    amount: 50.0,
-    date: "2025-02-19",
-    status: "completed",
-  },
-  {
-    id: "ORD002",
-    customer: "Jane Smith",
-    product: "10GB Data Bundle",
-    amount: 100.0,
-    date: "2025-02-19",
-    status: "pending",
-  },
-  {
-    id: "ORD003",
-    customer: "Bob Johnson",
-    product: "Unlimited Data Bundle",
-    amount: 200.0,
-    date: "2024-02-20",
-    status: "cancelled",
-  },
-]
 
 const statusColors = {
   completed: "bg-emerald-500",
   pending: "bg-yellow-500",
   cancelled: "bg-red-500",
+  review: "bg-blue-500",
 }
 
 export function Orders() {
+  const [orders, setOrders] = useState<Order[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch("/api/orders")
+        if (!response.ok) throw new Error("Failed to fetch orders")
+        const data = await response.json()
+        setOrders(data)
+      } catch (err) {
+        setError("Error loading orders")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchOrders()
+  }, [])
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
-      order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customerPhone.includes(searchTerm) ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === "all" || order.status === statusFilter
     return matchesSearch && matchesStatus
@@ -92,6 +93,7 @@ export function Orders() {
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="review">Review</SelectItem>
                 </SelectContent>
               </Select>
               <Button variant="outline" size="icon">
@@ -101,37 +103,48 @@ export function Orders() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Amount (₵)</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.id}</TableCell>
-                  <TableCell>{order.customer}</TableCell>
-                  <TableCell>{order.product}</TableCell>
-                  <TableCell className="text-right">{order.amount.toFixed(2)}</TableCell>
-                  <TableCell>{order.date}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={`${statusColors[order.status]} text-white`}>
-                      {order.status}
-                    </Badge>
-                  </TableCell>
+          {loading ? (
+            <p>Loading orders...</p>
+          ) : error ? (
+            <p className="text-red-500">{error}</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order ID</TableHead>
+                  {/* <TableHead>Agent</TableHead> */}
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead className="text-right">Amount (₵)</TableHead>
+                  <TableHead>Narration</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredOrders.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-medium">{order.id}</TableCell>
+                    {/* <TableCell>{order.agentName}</TableCell> */}
+                    <TableCell>{order.customerName}</TableCell>
+                    <TableCell>{order.customerPhone}</TableCell>
+                    <TableCell>{order.product}</TableCell>
+                    <TableCell className="text-right">{typeof order.amount === "number" ? order.amount.toFixed(2) : "N/A"}</TableCell>
+                    <TableCell>{order.narration}</TableCell>
+                    <TableCell>{order.date}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={`${statusColors[order.status]} text-white`}>
+                        {order.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
   )
 }
-
