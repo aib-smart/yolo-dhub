@@ -1,28 +1,28 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Search, Filter } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Search, Filter } from "lucide-react";
 
 interface Order {
-  id: string
-  agentId: string
-  agentName: string
-  customerName: string
-  customerPhone: string
-  product: string
-  amount: number
-  date: string
-  status: "completed" | "pending" | "cancelled" | "review"
-  paymentMethod: string
-  notes: string
-  createdAt: string
-  narration: string
+  id: string;
+  agentId: string;
+  agentName: string;
+  customerName: string;
+  customerPhone: string;
+  product: string;
+  amount: number;
+  date: string;
+  status: "completed" | "pending" | "cancelled" | "review";
+  paymentMethod: string;
+  notes: string;
+  createdAt: string;
+  narration: string;
 }
 
 const statusColors = {
@@ -30,39 +30,43 @@ const statusColors = {
   pending: "bg-yellow-500",
   cancelled: "bg-red-500",
   review: "bg-blue-500",
+};
+
+interface OrdersProps {
+  agentId: string; // Add agentId as a prop
 }
 
-export function Orders() {
-  const [orders, setOrders] = useState<Order[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+export function Orders({ agentId }: OrdersProps) {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch("/api/orders")
-        if (!response.ok) throw new Error("Failed to fetch orders")
-        const data = await response.json()
-        setOrders(data)
+        const response = await fetch(`/api/orders?agentId=${agentId}`); // Fetch orders for the logged-in agent
+        if (!response.ok) throw new Error("Failed to fetch orders");
+        const data = await response.json();
+        setOrders(data);
       } catch (err) {
-        setError("Error loading orders")
+        setError("Error loading orders");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    fetchOrders()
-  }, [])
+    };
+    fetchOrders();
+  }, [agentId]); // Re-fetch orders when agentId changes
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
       order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customerPhone.includes(searchTerm) ||
-      order.id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+      order.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
@@ -112,7 +116,6 @@ export function Orders() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Order ID</TableHead>
-                  {/* <TableHead>Agent</TableHead> */}
                   <TableHead>Customer</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Product</TableHead>
@@ -126,7 +129,6 @@ export function Orders() {
                 {filteredOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-medium">{order.id}</TableCell>
-                    {/* <TableCell>{order.agentName}</TableCell> */}
                     <TableCell>{order.customerName}</TableCell>
                     <TableCell>{order.customerPhone}</TableCell>
                     <TableCell>{order.product}</TableCell>
@@ -146,5 +148,5 @@ export function Orders() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

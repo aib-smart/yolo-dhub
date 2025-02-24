@@ -31,22 +31,25 @@ export function ModernDataPlatform() {
 
   // Check if user is logged in
   useEffect(() => {
-    const userStr = localStorage.getItem("user")
+    // Ensure localStorage is only accessed on the client side
+    if (typeof window === "undefined") return;
+  
+    const userStr = localStorage.getItem("agent");
     if (!userStr) {
-      router.push("/auth")
-      return
+      router.push("/auth");
+      return;
     }
     try {
-      const user = JSON.parse(userStr)
+      const user = JSON.parse(userStr);
       if (user.role !== "agent") {
-        router.push("/auth")
-        return
+        router.push("/auth");
+        return;
       }
-      setUserName(user.name)
+      setUserName(user.name);
     } catch (error) {
-      router.push("/auth")
+      router.push("/auth");
     }
-  }, [router])
+  }, [router]);
 
   const handleLogout = () => {
     logoutUser()
@@ -73,19 +76,28 @@ export function ModernDataPlatform() {
     overdraft: { value: "-GHS ***", label: "Overdraft" },
   }
 
-  // Render main content based on activeTab
+  // Inside the ModernDataPlatform component
   const renderMainContent = () => {
+    // Ensure localStorage is only accessed on the client side
+    if (typeof window === "undefined") {
+      return null; // Return null or a loading state during SSR
+    }
+  
+    const userStr = localStorage.getItem("agent");
+    const user = userStr ? JSON.parse(userStr) : null;
+    const uid = user?.uid; // Use uid instead of id
+  
     switch (activeTab) {
       case "packages":
-        return <InternetPackages />
+        return <InternetPackages />;
       case "wallet":
-        return <WalletPage />
+        return <WalletPage />;
       case "afa":
-        return <AfaRegistration />
+        return <AfaRegistration />;
       case "profile":
-        return <AgentProfile />
+        return <AgentProfile />;
       case "orders":
-        return <Orders />
+        return <Orders agentId={uid} />; // Pass uid as agentId
       default:
         // Dashboard
         return (
@@ -106,9 +118,9 @@ export function ModernDataPlatform() {
             </div>
             <RecentTransactions />
           </div>
-        )
+        );
     }
-  }
+  };
 
   // Reusable nav button
   const NavButton = ({

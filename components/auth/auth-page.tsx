@@ -1,50 +1,69 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Switch } from "@/components/ui/switch"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Package2, KeyRound, Loader2 } from "lucide-react"
-import { authenticateUser } from "@/lib/auth"
-import { useToast } from "@/components/ui/use-toast"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Package2, KeyRound, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { initializeApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Login schema
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-})
+});
 
+// Signup schema
 const signupSchema = z
   .object({
-    firstName: z.string().min(2, "First name must be at least 2 characters"),
-    lastName: z.string().min(2, "First name must be at least 2 characters"),
+    firstName: z.string().min(3, "First name must be at least 4 characters"),
+    lastName: z.string().min(3, "Last name must be at least 4 characters"),
     email: z.string().email("Invalid email address"),
     phone: z.string().min(10, "Phone number must be at least 10 digits"),
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
     idType: z.string(),
-    idNumber: z.string().min(4, "ID number must be at least 4 characters"),
+    idNumber: z.string().min(8, "ID number must be at least 8 characters"),
     region: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
-  })
+  });
 
 export function AuthPage() {
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [authType, setAuthType] = useState<"signin" | "signup">("signin")
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
-  const { toast } = useToast()
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [authType, setAuthType] = useState<"signin" | "signup">("signin");
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -52,7 +71,7 @@ export function AuthPage() {
       email: "",
       password: "",
     },
-  })
+  });
 
   const signupForm = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
@@ -67,63 +86,105 @@ export function AuthPage() {
       idNumber: "",
       region: "",
     },
-  })
+  });
 
   async function onLoginSubmit(values: z.infer<typeof loginSchema>) {
+    setIsLoading(true);
+  
     try {
-      setIsLoading(true)
-      const user = await authenticateUser(values.email, values.password)
-
-      if (!user) {
-        toast({
-          variant: "destructive",
-          title: "Authentication Error",
-          description: "Invalid email or password",
-        })
-        return
+      // Sign in with Firebase
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+  
+      console.log("User signed in:", user.uid); // Log the user's UID
+  
+      // Fetch user data from Firestore
+      const userDoc = await getDoc(doc(db, "agents", user.uid)); // Use Firebase uid to fetch data
+      const userData = userDoc.data();
+  
+      console.log("User data from Firestore:", userData); // Log the fetched user data
+  
+      if (!userData) {
+        throw new Error("User data not found");
       }
-
-      if (isAdmin && user.role !== "admin") {
-        toast({
-          variant: "destructive",
-          title: "Access Denied",
-          description: "This account doesn't have admin privileges",
-        })
-        return
-      }
-
-      if (!isAdmin && user.role !== "agent") {
-        toast({
-          variant: "destructive",
-          title: "Access Denied",
-          description: "Please use the admin login for admin accounts",
-        })
-        return
-      }
-
-      // Store user info (in production, use a proper auth management solution)
-      localStorage.setItem("user", JSON.stringify(user))
-
+  
+      console.log("User role:", userData.role); // Log the user's role
+  
+      // Store user data in localStorage
+      localStorage.setItem("agent", JSON.stringify(userData));
+  
       toast({
         title: "Welcome back!",
-        description: `Signed in as ${user.name}`,
-      })
-
+        description: `Signed in as ${user.email}`,
+      });
+  
       // Redirect based on role
-      router.push(user.role === "admin" ? "/admin" : "/")
-    } catch (error) {
+      if (userData.role === "admin") {
+        console.log("Redirecting to admin dashboard"); // Log redirection
+        router.push("/admin"); // Redirect to admin dashboard
+      } else if (userData.role === "agent") {
+        console.log("Redirecting to agent dashboard"); // Log redirection
+        router.push("/"); // Redirect to agent dashboard
+      } else {
+        throw new Error("Invalid role");
+      }
+    } catch (error: any) {
+      console.error("Error during login:", error); // Log the error
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "An error occurred during sign in",
-      })
+        title: "Authentication Error",
+        description: error.message || "Failed to sign in",
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
-  function onSignupSubmit(values: z.infer<typeof signupSchema>) {
-    console.log(values)
+  async function onSignupSubmit(values: z.infer<typeof signupSchema>) {
+    setIsLoading(true);
+
+    try {
+      // Create user with Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // Save additional user data in Firestore
+      const userData = {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        phone: values.phone,
+        idType: values.idType,
+        idNumber: values.idNumber,
+        region: values.region,
+        role: isAdmin ? "admin" : "agent", // Set role based on isAdmin state
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+        isActive: true,
+      };
+
+      // Use Firebase uid as the Firestore document ID
+      await setDoc(doc(db, "agents", user.uid), userData);
+
+      console.log("User created with role:", userData.role); // Log the role
+
+      toast({
+        title: "Signup Successful",
+        description: "You can now sign in with your new account",
+      });
+
+      // Switch to sign-in tab after successful signup
+      setAuthType("signin");
+    } catch (error: any) {
+      console.error("Error during signup:", error); // Log the error
+      toast({
+        variant: "destructive",
+        title: "Signup Error",
+        description: error.message || "Failed to sign up",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -143,8 +204,8 @@ export function AuthPage() {
                 id="admin-mode"
                 checked={isAdmin}
                 onCheckedChange={(checked) => {
-                  setIsAdmin(checked)
-                  setAuthType("signin") // Reset to signin when toggling admin mode
+                  setIsAdmin(checked);
+                  setAuthType("signin"); // Reset to signin when toggling admin mode
                 }}
               />
             </div>
@@ -356,8 +417,15 @@ export function AuthPage() {
                     )}
                   />
 
-                  <Button type="submit" className="w-full">
-                    Sign Up
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing up...
+                      </>
+                    ) : (
+                      "Sign Up"
+                    )}
                   </Button>
                 </form>
               </Form>
@@ -393,6 +461,5 @@ export function AuthPage() {
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }
-

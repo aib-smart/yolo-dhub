@@ -1,53 +1,70 @@
-import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { NextResponse } from "next/server";
-
-// 🟢 Fetch Orders
-export async function GET(req: Request) {
-    try {
-      const { searchParams } = new URL(req.url)
-      const agentId = searchParams.get("agentId")
-  
-      let ordersQuery = collection(db, "orders")
-      if (agentId) {
-        ordersQuery = query(ordersQuery, where("agentId", "==", agentId))
-      }
-  
-      const querySnapshot = await getDocs(ordersQuery)
-      const orders = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
-  
-      return NextResponse.json(orders, { status: 200 })
-    } catch (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-  }
-  
+import { db } from "@/lib/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 // 🟢 Create Order
 export async function POST(req: Request) {
   try {
-    const { agentId, agentName, customerPhone, product, amount, paymentMethod, notes } = await req.json();
-
-    const newOrder = {
+    const {
       agentId,
       agentName,
       customerPhone,
       product,
       amount,
-      status: "review",
       paymentMethod,
+      paymentNetwork,
+      transactionId,
+      senderName,
+      status,
       notes,
-      createdAt: serverTimestamp(),
-      narration: "",
-    };
+    } = await req.json();
 
-    const docRef = await addDoc(collection(db, "orders"), newOrder);
+    // Validate required fields
+    if (
+      !agentId ||
+      !agentName ||
+      !product ||
+      !amount ||
+      !paymentMethod ||
+      !paymentNetwork ||
+      !transactionId ||
+      !senderName
+    ) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
 
-    return NextResponse.json({ id: docRef.id, ...newOrder }, { status: 201 });
+    // Generate a unique ID for the order
+    const orderId = `order_${Date.now()}`;
+
+    // Create a new order document in the agent's orders subcollection
+    await setDoc(
+      doc(db, "orders", agentId, "orders", orderId), // Path: orders > agentId > orders > orderId
+      {
+        agentId,
+        agentName,
+        customerPhone: customerPhone || "",
+        product,
+        amount,
+        paymentMethod,
+        paymentNetwork,
+        transactionId,
+        senderName,
+        status: status || "pending",
+        notes: notes || "",
+        createdAt: serverTimestamp(), // Use server timestamp
+        lastUpdated: serverTimestamp(), // Use server timestamp
+      }
+    );
+
+    return NextResponse.json({ id: orderId }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error creating order:", error);
+    return NextResponse.json(
+      { error: "Failed to create order" },
+      { status: 500 }
+    );
   }
 }
