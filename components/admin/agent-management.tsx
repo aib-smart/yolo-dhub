@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Search, MoreVertical, CheckCircle, XCircle } from "lucide-react"
+import { supabaseAdmin } from "@/lib/supabase/supabase.admin"
+import { toast } from "@/components/ui/use-toast"
 
 interface Agent {
   id: string
@@ -53,6 +55,65 @@ const agents: Agent[] = [
     transactions: 89,
   },
 ]
+
+const handleApproveAgent = async (agentId: string) => {
+  try {
+    const { error } = await supabaseAdmin
+      .from("user_profiles")
+      .update({
+        approval_status: "approved",
+        is_active: true,
+      })
+      .eq("id", agentId)
+
+    if (error) throw error
+
+    // Refresh the agents list
+    // You'll need to implement fetchAgents() to get the updated list
+    // await fetchAgents()
+
+    toast({
+      title: "Success",
+      description: "Agent approved successfully",
+    })
+  } catch (error) {
+    console.error("Error approving agent:", error)
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to approve agent",
+    })
+  }
+}
+
+const handleRejectAgent = async (agentId: string) => {
+  try {
+    const { error } = await supabaseAdmin
+      .from("user_profiles")
+      .update({
+        approval_status: "rejected",
+        is_active: false,
+      })
+      .eq("id", agentId)
+
+    if (error) throw error
+
+    // Refresh the agents list
+    // await fetchAgents()
+
+    toast({
+      title: "Success",
+      description: "Agent rejected successfully",
+    })
+  } catch (error) {
+    console.error("Error rejecting agent:", error)
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to reject agent",
+    })
+  }
+}
 
 export function AgentManagement() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -177,21 +238,25 @@ export function AgentManagement() {
                         </DropdownMenuItem>
                         {agent.status === "pending" && (
                           <>
-                            <DropdownMenuItem className="text-green-600">
+                            <DropdownMenuItem className="text-green-600" onClick={() => handleApproveAgent(agent.id)}>
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Approve
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
+                            <DropdownMenuItem className="text-red-600" onClick={() => handleRejectAgent(agent.id)}>
                               <XCircle className="h-4 w-4 mr-2" />
                               Reject
                             </DropdownMenuItem>
                           </>
                         )}
                         {agent.status === "active" && (
-                          <DropdownMenuItem className="text-red-600">Suspend Account</DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600" onClick={() => handleRejectAgent(agent.id)}>
+                            Suspend Account
+                          </DropdownMenuItem>
                         )}
                         {agent.status === "suspended" && (
-                          <DropdownMenuItem className="text-green-600">Reactivate Account</DropdownMenuItem>
+                          <DropdownMenuItem className="text-green-600" onClick={() => handleApproveAgent(agent.id)}>
+                            Reactivate Account
+                          </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>

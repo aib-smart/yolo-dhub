@@ -1,140 +1,118 @@
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  addDoc,
-  updateDoc,
-  doc,
-  getDocs,
-  serverTimestamp,
-  writeBatch,
-} from "firebase/firestore"
-import { db } from "../firebase"
+import { supabase } from "@/lib/supabase"
+import type { Database } from "@/types/supabase"
 
-export interface Order {
-  id: string
-  agentId: string
-  agentName: string
-  customerPhone: string
-  product: string
-  amount: number
-  date: string
-  status: "completed" | "pending" | "cancelled" | "failed" | "review"
-  paymentMethod?: string
-  notes?: string
-  exported?: boolean
-  createdAt: Date
-  timeline?: {
-    status: string
-    timestamp: string
-    description: string
-  }[]
+export type Order = Database["public"]["Tables"]["orders"]["Row"] & {
+  timeline?: Database["public"]["Tables"]["order_timeline"]["Row"][]
 }
 
-export const ordersCollection = collection(db, "orders")
-
-export const subscribeToOrders = (callback: (orders: Order[]) => void) => {
+export async function createOrder(orderData: Database["public"]["Tables"]["orders"]["Insert"]) {
   try {
-    const q = query(ordersCollection, orderBy("createdAt", "desc"))
-
-    return onSnapshot(
-      q,
-      (snapshot) => {
-        const orders = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-        })) as Order[]
-        callback(orders)
-      },
-      (error) => {
-        console.error("Error subscribing to orders:", error)
-        callback([])
-      },
-    )
-  } catch (error) {
-    console.error("Error setting up orders subscription:", error)
-    return () => {} // Return empty cleanup function
-  }
-}
-
-export const createOrder = async (orderData: Omit<Order, "id" | "createdAt">) => {
-  try {
-    const docRef = await addDoc(ordersCollection, {
-      ...orderData,
-      createdAt: serverTimestamp(),
-      status: "review", // Default status for new orders
-      exported: false,
-      timeline: [
+    const { data: order, error } = await supabase
+      .from("orders")
+      .insert([
         {
-          status: "created",
-          timestamp: new Date().toISOString(),
-          description: "Order created",
+          ...orderData,
+          status: "review",
+          exported: false,
         },
-      ],
-    })
+      ])
+      .select()
+      .single()
 
-    return docRef.id
+    if (error) throw error
+
+    // Create initial timeline entry
+    const { error: timelineError } = await supabase.from("order_timeline").insert([
+      {
+        order_id: order.id,
+        status: "created",
+        description: "Order created",
+      },
+    ])
+
+    if (timelineError) throw timelineError
+
+    return order
   } catch (error) {
     console.error("Error creating order:", error)
     throw error
   }
 }
 
-export const updateOrderStatus = async (orderId: string, status: Order["status"]) => {
+export async function getOrders(agentId: string, status?: string) {
   try {
-    const orderRef = doc(ordersCollection, orderId)
-    const timeline = await getOrderTimeline(orderId)
+    let query = supabase
+      .from("orders")
+      .select(
+        `
+        *,
+        order_timeline (*)
+      `,
+      )
+      .eq("agent_id", agentId)
+      .order("created_at", { ascending: false })
 
-    await updateDoc(orderRef, {
-      status,
-      timeline: [
-        ...timeline,
-        {
-          status,
-          timestamp: new Date().toISOString(),
-          description: `Order status updated to ${status}`,
-        },
-      ],
-    })
+    if (status && status !== "all") {
+      query = query.eq("status", status)
+    }
+
+    const { data, error } = await query
+
+    if (error) throw error
+
+    return data as Order[]
+  } catch (error) {
+    console.error("Error fetching orders:", error)
+    throw error
+  }
+}
+
+export async function updateOrderStatus(orderId: string, status: Order["status"]) {
+  try {
+    const { data: order, error } = await supabase.from("orders").update({ status }).eq("id", orderId).select().single()
+
+    if (error) throw error
+
+    // Add timeline entry
+    const { error: timelineError } = await supabase.from("order_timeline").insert([
+      {
+        order_id: orderId,
+        status,
+        description: `Order status updated to ${status}`,
+      },
+    ])
+
+    if (timelineError) throw timelineError
+
+    return order
   } catch (error) {
     console.error("Error updating order status:", error)
     throw error
   }
 }
 
-export const getOrderTimeline = async (orderId: string) => {
+export async function markOrdersAsExported(orderIds: string[]) {
   try {
-    const orderRef = doc(ordersCollection, orderId)
-    const orderSnap = await getDocs(query(collection(orderRef, "timeline")))
-    return orderSnap.docs.map((doc) => doc.data())
-  } catch (error) {
-    console.error("Error getting order timeline:", error)
-    return []
-  }
-}
-
-export const markOrdersAsExported = async (orderIds: string[]) => {
-  const batch = writeBatch(db)
-
-  try {
-    orderIds.forEach((id) => {
-      const orderRef = doc(ordersCollection, id)
-      batch.update(orderRef, {
+    const { error } = await supabase
+      .from("orders")
+      .update({
         status: "pending",
         exported: true,
-        timeline: [
-          {
-            status: "exported",
-            timestamp: new Date().toISOString(),
-            description: "Order exported and status changed to pending",
-          },
-        ],
       })
-    })
+      .in("id", orderIds)
 
-    await batch.commit()
+    if (error) throw error
+
+    // Add timeline entries
+    const timelineEntries = orderIds.map((id) => ({
+      order_id: id,
+      status: "exported",
+      description: "Order exported and status changed to pending",
+    }))
+
+    const { error: timelineError } = await supabase.from("order_timeline").insert(timelineEntries)
+
+    if (timelineError) throw timelineError
   } catch (error) {
     console.error("Error marking orders as exported:", error)
     throw error

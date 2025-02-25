@@ -1,28 +1,19 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Search, Filter } from "lucide-react";
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Search, Filter } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { supabase } from "@/lib/supabase"
+import type { Order } from "@/lib/services/orders"
 
-interface Order {
-  id: string;
-  agentId: string;
-  agentName: string;
-  customerName: string;
-  customerPhone: string;
-  product: string;
-  amount: number;
-  date: string;
-  status: "completed" | "pending" | "cancelled" | "review";
-  paymentMethod: string;
-  notes: string;
-  createdAt: string;
-  narration: string;
+interface OrdersProps {
+  agentId: string
 }
 
 const statusColors = {
@@ -30,52 +21,78 @@ const statusColors = {
   pending: "bg-yellow-500",
   cancelled: "bg-red-500",
   review: "bg-blue-500",
-};
-
-interface OrdersProps {
-  agentId: string; // Add agentId as a prop
 }
 
 export function Orders({ agentId }: OrdersProps) {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [orders, setOrders] = useState<Order[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchOrders = async () => {
-      try {
-        const response = await fetch(`/api/orders?agentId=${agentId}`); // Fetch orders for the logged-in agent
-        if (!response.ok) throw new Error("Failed to fetch orders");
-        const data = await response.json();
-        setOrders(data);
-      } catch (err) {
-        setError("Error loading orders");
-      } finally {
-        setLoading(false);
+      if (!agentId) {
+        console.warn("No agent ID provided")
+        return
       }
-    };
-    fetchOrders();
-  }, [agentId]); // Re-fetch orders when agentId changes
+
+      try {
+        setLoading(true)
+        let query = supabase
+          .from("orders")
+          .select(
+            `
+            *,
+            order_timeline (*)
+          `,
+          )
+          .eq("agent_id", agentId)
+          .order("created_at", { ascending: false })
+
+        if (statusFilter !== "all") {
+          query = query.eq("status", statusFilter)
+        }
+
+        const { data, error } = await query
+
+        if (error) throw error
+
+        setOrders(data)
+      } catch (err) {
+        console.error("Error fetching orders:", err)
+        setError("Failed to load orders")
+        toast({
+          title: "Error",
+          description: "Failed to load orders. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchOrders()
+  }, [agentId, statusFilter, toast])
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerPhone.includes(searchTerm) ||
-      order.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+      order.customer_phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.id.toLowerCase().includes(searchTerm.toLowerCase())
+
+    return matchesSearch
+  })
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-1">
         <h2 className="text-2xl font-semibold tracking-tight">Orders</h2>
-        <p className="text-muted-foreground">Manage and track customer orders</p>
+        <p className="text-muted-foreground">View and manage your orders</p>
       </div>
 
-      <Card className="bg-white/50 backdrop-blur-sm">
+      <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row gap-4 justify-between">
             <div className="relative flex-1">
@@ -94,10 +111,10 @@ export function Orders({ agentId }: OrdersProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="review">Under Review</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
-                  <SelectItem value="review">Review</SelectItem>
                 </SelectContent>
               </Select>
               <Button variant="outline" size="icon">
@@ -108,45 +125,48 @@ export function Orders({ agentId }: OrdersProps) {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p>Loading orders...</p>
+            <div className="text-center py-4">Loading orders...</div>
           ) : error ? (
-            <p className="text-red-500">{error}</p>
+            <div className="text-center text-red-500 py-4">{error}</div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="text-center py-4">No orders found</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="text-right">Amount (₵)</TableHead>
-                  <TableHead>Narration</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.id}</TableCell>
-                    <TableCell>{order.customerName}</TableCell>
-                    <TableCell>{order.customerPhone}</TableCell>
-                    <TableCell>{order.product}</TableCell>
-                    <TableCell className="text-right">{typeof order.amount === "number" ? order.amount.toFixed(2) : "N/A"}</TableCell>
-                    <TableCell>{order.narration}</TableCell>
-                    <TableCell>{order.date}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={`${statusColors[order.status]} text-white`}>
-                        {order.status}
-                      </Badge>
-                    </TableCell>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order ID</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="text-right">Amount (₵)</TableHead>
+                    <TableHead>Payment Method</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredOrders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium">{order.id}</TableCell>
+                      <TableCell>{order.product}</TableCell>
+                      <TableCell>{order.customer_phone}</TableCell>
+                      <TableCell className="text-right">{order.amount.toFixed(2)}</TableCell>
+                      <TableCell>{order.payment_method}</TableCell>
+                      <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={`${statusColors[order.status]} text-white`}>
+                          {order.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
+

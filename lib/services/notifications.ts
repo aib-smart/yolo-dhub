@@ -1,57 +1,33 @@
-import { getToken } from "firebase/messaging"
-import { doc, setDoc } from "firebase/firestore"
-import { messaging, db } from "../firebase"
-
+// This is a simplified version without Firebase Cloud Messaging
 export const initializeNotifications = async (userId: string) => {
-  try {
-    if (!messaging) {
-      console.warn("Firebase messaging not available")
+    if (!("Notification" in window)) {
+      console.warn("This browser does not support notifications")
       return
     }
-
-    const permission = await Notification.requestPermission()
-    if (permission !== "granted") {
-      console.warn("Notification permission denied")
-      return
-    }
-
-    const token = await getToken(messaging, {
-      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-    })
-
-    if (!token) {
-      console.warn("Failed to get FCM token")
-      return
-    }
-
-    // Save the token to Firestore
-    await setDoc(doc(db, "adminDevices", userId), {
-      token,
-      lastUpdated: new Date(),
-    })
-
-    console.log("Notification token saved successfully")
-  } catch (error) {
-    console.error("Notification initialization failed:", error)
-  }
-}
-
-export const setupNotificationListener = () => {
-  if (!messaging) {
-    console.warn("Firebase messaging not available")
-    return
-  }
-
-  // Handle incoming messages when the app is in the foreground
-  messaging.onMessage((payload) => {
+  
     try {
-      new Notification(payload.notification.title, {
-        body: payload.notification.body,
-        icon: "/icon.png",
-      })
+      const permission = await Notification.requestPermission()
+      if (permission !== "granted") {
+        console.warn("Notification permission denied")
+        return
+      }
+  
+      console.log("Notification permission granted")
     } catch (error) {
-      console.error("Error showing notification:", error)
+      console.error("Error requesting notification permission:", error)
     }
-  })
-}
-
+  }
+  
+  export const setupNotificationListener = () => {
+    // Implement browser notification handling here
+    // This can be expanded later with a proper notification service
+    console.log("Notification listener setup")
+  }
+  
+  export const showNotification = (title: string, options?: NotificationOptions) => {
+    if (Notification.permission === "granted") {
+      new Notification(title, options)
+    }
+  }
+  
+  

@@ -1,4 +1,4 @@
 export const DashboardHeader = () => {
-  return <header>Dashboard Header</header>;
-};
+  return <header>Dashboard Header</header>
+}
 

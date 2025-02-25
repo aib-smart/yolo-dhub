@@ -1,44 +1,27 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Package2, KeyRound, Loader2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { initializeApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
-
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Switch } from "@/components/ui/switch"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Package2, KeyRound, Loader2 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { signIn, signUp } from "@/lib/auth"
 
 // Login schema
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-});
+})
 
 // Signup schema
 const signupSchema = z
@@ -56,14 +39,14 @@ const signupSchema = z
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
-  });
+  })
 
 export function AuthPage() {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [authType, setAuthType] = useState<"signin" | "signup">("signin");
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
-  const { toast } = useToast();
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [authType, setAuthType] = useState<"signin" | "signup">("signin")
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+  const { toast } = useToast()
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -71,7 +54,7 @@ export function AuthPage() {
       email: "",
       password: "",
     },
-  });
+  })
 
   const signupForm = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
@@ -86,104 +69,97 @@ export function AuthPage() {
       idNumber: "",
       region: "",
     },
-  });
+  })
 
   async function onLoginSubmit(values: z.infer<typeof loginSchema>) {
-    setIsLoading(true);
-  
+    setIsLoading(true)
+
     try {
-      // Sign in with Firebase
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-  
-      console.log("User signed in:", user.uid); // Log the user's UID
-  
-      // Fetch user data from Firestore
-      const userDoc = await getDoc(doc(db, "agents", user.uid)); // Use Firebase uid to fetch data
-      const userData = userDoc.data();
-  
-      console.log("User data from Firestore:", userData); // Log the fetched user data
-  
-      if (!userData) {
-        throw new Error("User data not found");
+      const { user, profile } = await signIn(values.email, values.password)
+
+      if (!profile) {
+        throw new Error("User profile not found")
       }
-  
-      console.log("User role:", userData.role); // Log the user's role
-  
+
+      // Check approval status
+      if (profile.role === "agent" && profile.approval_status === "pending") {
+        router.push("/pending-approval")
+        return
+      }
+
+      if (!profile.is_active) {
+        throw new Error("Your account has been deactivated. Please contact support.")
+      }
+
       // Store user data in localStorage
-      localStorage.setItem("agent", JSON.stringify(userData));
-  
+      localStorage.setItem(
+        "agent",
+        JSON.stringify({
+          uid: user.id,
+          email: user.email,
+          name: `${profile.first_name} ${profile.last_name}`,
+          role: profile.role,
+          agentId: profile.agent_id,
+        }),
+      )
+
       toast({
         title: "Welcome back!",
         description: `Signed in as ${user.email}`,
-      });
-  
+      })
+
       // Redirect based on role
-      if (userData.role === "admin") {
-        console.log("Redirecting to admin dashboard"); // Log redirection
-        router.push("/admin"); // Redirect to admin dashboard
-      } else if (userData.role === "agent") {
-        console.log("Redirecting to agent dashboard"); // Log redirection
-        router.push("/"); // Redirect to agent dashboard
+      if (profile.role === "admin") {
+        router.push("/admin")
       } else {
-        throw new Error("Invalid role");
+        router.push("/")
       }
     } catch (error: any) {
-      console.error("Error during login:", error); // Log the error
+      console.error("Error during login:", error)
       toast({
         variant: "destructive",
         title: "Authentication Error",
         description: error.message || "Failed to sign in",
-      });
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 
   async function onSignupSubmit(values: z.infer<typeof signupSchema>) {
-    setIsLoading(true);
+    setIsLoading(true)
 
     try {
-      // Create user with Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-
-      // Save additional user data in Firestore
-      const userData = {
-        firstName: values.firstName,
-        lastName: values.lastName,
+      const result = await signUp({
         email: values.email,
+        password: values.password,
+        first_name: values.firstName,
+        last_name: values.lastName,
         phone: values.phone,
-        idType: values.idType,
-        idNumber: values.idNumber,
+        id_type: values.idType,
+        id_number: values.idNumber,
         region: values.region,
-        role: isAdmin ? "admin" : "agent", // Set role based on isAdmin state
-        createdAt: new Date().toISOString(),
-        lastUpdated: new Date().toISOString(),
-        isActive: true,
-      };
+        role: isAdmin ? "admin" : "agent",
+      })
 
-      // Use Firebase uid as the Firestore document ID
-      await setDoc(doc(db, "agents", user.uid), userData);
-
-      console.log("User created with role:", userData.role); // Log the role
-
+      // Show success message
       toast({
-        title: "Signup Successful",
-        description: "You can now sign in with your new account",
-      });
+        title: "Registration Successful",
+        description:
+          "Please check your email to confirm your account. Once confirmed, an administrator will review your application.",
+      })
 
       // Switch to sign-in tab after successful signup
-      setAuthType("signin");
+      setAuthType("signin")
     } catch (error: any) {
-      console.error("Error during signup:", error); // Log the error
+      console.error("Error during signup:", error)
       toast({
         variant: "destructive",
         title: "Signup Error",
         description: error.message || "Failed to sign up",
-      });
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 
@@ -204,8 +180,8 @@ export function AuthPage() {
                 id="admin-mode"
                 checked={isAdmin}
                 onCheckedChange={(checked) => {
-                  setIsAdmin(checked);
-                  setAuthType("signin"); // Reset to signin when toggling admin mode
+                  setIsAdmin(checked)
+                  setAuthType("signin") // Reset to signin when toggling admin mode
                 }}
               />
             </div>
@@ -461,5 +437,8 @@ export function AuthPage() {
         </CardFooter>
       </Card>
     </div>
-  );
+  )
 }
+
+export default AuthPage
+

@@ -6,11 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
-import { DatePickerWithRange } from "./ui/date-range-picker"
-import { Search, Filter, X } from "lucide-react"
+import { Search } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 
 // Transaction interface
@@ -67,10 +64,7 @@ export function RecentTransactions() {
     }
   }, [])
 
-  const { data: transactions = [], error } = useSWR(
-    agentId ? `/api/orders?agentId=${agentId}` : null,
-    fetcher
-  )
+  const { data: transactions = [], error } = useSWR(agentId ? `/api/orders?agentId=${agentId}` : null, fetcher)
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((transaction: Transaction) => {
@@ -146,7 +140,9 @@ export function RecentTransactions() {
                     <TableCell>{transaction.narration}</TableCell>
                     <TableCell>{transaction.paymentMethod}</TableCell>
                     <TableCell>
-                      <Badge className={`bg-${transaction.status === "completed" ? "emerald" : transaction.status === "pending" ? "yellow" : "red"}-500 text-white`}>
+                      <Badge
+                        className={`bg-${transaction.status === "completed" ? "emerald" : transaction.status === "pending" ? "yellow" : "red"}-500 text-white`}
+                      >
                         {transaction.status}
                       </Badge>
                     </TableCell>
@@ -160,3 +156,4 @@ export function RecentTransactions() {
     </div>
   )
 }
+

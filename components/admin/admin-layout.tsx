@@ -1,20 +1,20 @@
-"use client";
+"use client"
 
-import type React from "react";
-import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Sidebar, SidebarContent, SidebarTrigger } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Package, Wallet, Users, Settings, LogOut, LayoutDashboard, ShieldCheck, ShoppingCart } from "lucide-react";
-import { logoutUser } from "@/lib/auth";
-import { useToast } from "@/components/ui/use-toast";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { LoadingSkeleton } from "@/components/ui/loading";
+import type React from "react"
+import { useEffect, useState, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Sidebar, SidebarContent, SidebarTrigger } from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
+import { Package, Wallet, Users, Settings, LogOut, LayoutDashboard, ShieldCheck, ShoppingCart } from "lucide-react"
+import { logoutUser } from "@/lib/auth"
+import { useToast } from "@/components/ui/use-toast"
+import { SidebarProvider } from "@/components/ui/sidebar"
+import { LoadingSkeleton } from "@/components/ui/loading"
 
 interface AdminLayoutProps {
-  children: React.ReactNode;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
+  children: React.ReactNode
+  activeTab: string
+  setActiveTab: (tab: string) => void
 }
 
 const SidebarItem = ({ icon: Icon, label, isActive, onClick, className = "" }) => (
@@ -27,53 +27,53 @@ const SidebarItem = ({ icon: Icon, label, isActive, onClick, className = "" }) =
     <Icon className="h-5 w-5" />
     <span>{label}</span>
   </button>
-);
+)
 
 function AdminLayoutContent({ children, activeTab, setActiveTab }: AdminLayoutProps) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { toast } = useToast();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const { toast } = useToast()
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   useEffect(() => {
-    const tab = searchParams.get("tab");
+    const tab = searchParams.get("tab")
     if (tab) {
-      setActiveTab(tab);
+      setActiveTab(tab)
     }
-  }, [searchParams, setActiveTab]);
+  }, [searchParams, setActiveTab])
 
   useEffect(() => {
     // Check if user is logged in and has a valid role
-    const userStr = localStorage.getItem("agent");
+    const userStr = localStorage.getItem("agent")
     if (!userStr) {
-      console.log("No user found in localStorage. Redirecting to /auth.");
-      router.push("/auth");
-      return;
+      console.log("No user found in localStorage. Redirecting to /auth.")
+      router.push("/auth")
+      return
     }
 
     try {
-      const user = JSON.parse(userStr);
-      console.log("User data from localStorage:", user);
+      const user = JSON.parse(userStr)
+      console.log("User data from localStorage:", user)
 
       // Allow both admin and agent roles to access the dashboard
       if (user.role !== "admin" && user.role !== "agent") {
-        console.log("Invalid role. Redirecting to /auth.");
-        router.push("/auth");
+        console.log("Invalid role. Redirecting to /auth.")
+        router.push("/auth")
       }
     } catch (error) {
-      console.error("Error parsing user data from localStorage:", error);
-      router.push("/auth");
+      console.error("Error parsing user data from localStorage:", error)
+      router.push("/auth")
     }
-  }, [router]);
+  }, [router])
 
   const handleLogout = () => {
-    logoutUser();
+    logoutUser()
     toast({
       title: "Logged out successfully",
       description: "You have been logged out of your account",
-    });
-    router.push("/auth");
-  };
+    })
+    router.push("/auth")
+  }
 
   return (
     <SidebarProvider>
@@ -82,10 +82,7 @@ function AdminLayoutContent({ children, activeTab, setActiveTab }: AdminLayoutPr
         <nav className="bg-white/80 backdrop-blur-lg border-b sticky top-0 z-50">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <SidebarTrigger
-                className="lg:hidden"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              />
+              <SidebarTrigger className="lg:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)} />
               <h1 className="text-xl font-semibold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
                 YOLO DataHub Admin
               </h1>
@@ -223,7 +220,7 @@ function AdminLayoutContent({ children, activeTab, setActiveTab }: AdminLayoutPr
         </div>
       </div>
     </SidebarProvider>
-  );
+  )
 }
 
 // Main component with Suspense using the skeleton fallback
@@ -232,5 +229,6 @@ export function AdminLayout({ children, activeTab, setActiveTab }: AdminLayoutPr
     <Suspense fallback={<LoadingSkeleton />}>
       <AdminLayoutContent children={children} activeTab={activeTab} setActiveTab={setActiveTab} />
     </Suspense>
-  );
+  )
 }
+

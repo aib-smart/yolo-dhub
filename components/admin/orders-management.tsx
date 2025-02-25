@@ -1,22 +1,22 @@
-"use client";
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Download, MoreVertical, Loader2 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker";
-import { addDays } from "date-fns";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/components/ui/use-toast";
-import * as XLSX from "xlsx";
-import { type Order, markOrdersAsExported } from "@/lib/services/orders";
-import { initializeNotifications, setupNotificationListener } from "@/lib/services/notifications";
+"use client"
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Search, Filter, Download, MoreVertical, Loader2 } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DatePickerWithRange } from "@/components/ui/date-range-picker"
+import { addDays } from "date-fns"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
+import { Checkbox } from "@/components/ui/checkbox"
+import { useToast } from "@/components/ui/use-toast"
+import * as XLSX from "xlsx"
+import { type Order, markOrdersAsExported } from "@/lib/services/orders"
+import { initializeNotifications, setupNotificationListener } from "@/lib/services/notifications"
 
 const statusColors = {
   completed: "bg-emerald-500",
@@ -24,88 +24,86 @@ const statusColors = {
   cancelled: "bg-gray-500",
   failed: "bg-red-500",
   review: "bg-blue-500",
-};
+}
 
 export function OrdersManagement() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
   const [date, setDate] = useState({
     from: addDays(new Date(), -7),
     to: new Date(),
-  });
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
-  const [isExporting, setIsExporting] = useState(false);
-  const { toast } = useToast();
-  const [ordersData, setOrdersData] = useState<Order[]>([]);
+  })
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([])
+  const [isExporting, setIsExporting] = useState(false)
+  const { toast } = useToast()
+  const [ordersData, setOrdersData] = useState<Order[]>([])
 
   useEffect(() => {
     const initializeComponent = async () => {
       try {
         // Initialize notifications if needed
         if (typeof window !== "undefined") {
-          await initializeNotifications("admin");
-          setupNotificationListener();
+          await initializeNotifications("admin")
+          setupNotificationListener()
         }
 
         // Fetch orders from the API
-        const res = await fetch("/api/orders");
+        const res = await fetch("/api/orders")
         if (!res.ok) {
-          throw new Error("Failed to fetch orders");
+          throw new Error("Failed to fetch orders")
         }
-        const data = await res.json();
+        const data = await res.json()
 
         // Log the data to verify its shape
-        console.log("Fetched orders data:", data);
+        console.log("Fetched orders data:", data)
 
         // If your API returns an object with orders, adjust here:
-        const ordersArray = Array.isArray(data) ? data : data.orders;
-        setOrdersData(ordersArray);
+        const ordersArray = Array.isArray(data) ? data : data.orders
+        setOrdersData(ordersArray)
 
         // Check for new orders and show toast for orders under review
-        const newOrders = ordersArray.filter((order: Order) => order.status === "review");
+        const newOrders = ordersArray.filter((order: Order) => order.status === "review")
         if (newOrders.length > 0) {
           toast({
             title: "New Orders Received",
             description: `You have ${newOrders.length} new order(s) to review`,
-          });
+          })
         }
       } catch (error) {
-        console.error("Error initializing component:", error);
+        console.error("Error initializing component:", error)
         toast({
           variant: "destructive",
           title: "Error",
           description: "Failed to load orders. Please refresh the page.",
-        });
+        })
       }
-    };
+    }
 
-    initializeComponent();
-  }, [toast]);
+    initializeComponent()
+  }, [toast])
 
   const filteredOrders = ordersData.filter((order) => {
     const matchesSearch =
       order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.agentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerPhone.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+      order.customerPhone.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
 
   const handleSelectOrder = (orderId: string) => {
-    setSelectedOrders((prev) =>
-      prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId]
-    );
-  };
+    setSelectedOrders((prev) => (prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId]))
+  }
 
   const handleSelectAll = () => {
     if (selectedOrders.length === filteredOrders.length) {
-      setSelectedOrders([]);
+      setSelectedOrders([])
     } else {
-      setSelectedOrders(filteredOrders.map((order) => order.id));
+      setSelectedOrders(filteredOrders.map((order) => order.id))
     }
-  };
+  }
 
   const exportToExcel = async () => {
     if (selectedOrders.length === 0) {
@@ -113,11 +111,11 @@ export function OrdersManagement() {
         title: "No Orders Selected",
         description: "Please select orders to export",
         variant: "destructive",
-      });
-      return;
+      })
+      return
     }
 
-    setIsExporting(true);
+    setIsExporting(true)
 
     try {
       // Get selected orders data
@@ -134,10 +132,10 @@ export function OrdersManagement() {
           Status: order.status.toUpperCase(),
           "Payment Method": order.paymentMethod || "",
           Notes: order.notes || "",
-        }));
+        }))
 
       // Create the worksheet
-      const ws = XLSX.utils.json_to_sheet(ordersToExport);
+      const ws = XLSX.utils.json_to_sheet(ordersToExport)
 
       // Add column widths
       ws["!cols"] = [
@@ -151,50 +149,50 @@ export function OrdersManagement() {
         { wch: 10 },
         { wch: 15 },
         { wch: 30 },
-      ];
+      ]
 
       // Create workbook and append worksheet
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Orders");
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Orders")
 
       // Generate blob
-      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([wbout], { type: "application/octet-stream" });
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
+      const blob = new Blob([wbout], { type: "application/octet-stream" })
 
       // Create download link and trigger download
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `orders_export_${new Date().toISOString().replace(/[:.]/g, "-")}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", `orders_export_${new Date().toISOString().replace(/[:.]/g, "-")}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
 
       // Update orders in Firestore or your backend API
-      await markOrdersAsExported(selectedOrders);
+      await markOrdersAsExported(selectedOrders)
 
-      setSelectedOrders([]);
+      setSelectedOrders([])
 
       toast({
         title: "Export Successful",
         description: `${selectedOrders.length} orders have been exported and marked as pending`,
-      });
+      })
     } catch (error) {
-      console.error("Export error:", error);
+      console.error("Export error:", error)
       toast({
         title: "Export Failed",
         description: "An error occurred while exporting orders",
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsExporting(false);
+      setIsExporting(false)
     }
-  };
+  }
 
   const handleViewDetails = (order: Order) => {
-    setSelectedOrder(order);
-    setIsDetailsOpen(true);
-  };
+    setSelectedOrder(order)
+    setIsDetailsOpen(true)
+  }
 
   return (
     <div className="space-y-6">
@@ -416,7 +414,7 @@ export function OrdersManagement() {
                               event.status === "completed" && "bg-emerald-500",
                               event.status === "processing" && "bg-blue-500",
                               event.status === "created" && "bg-gray-500",
-                              event.status === "review" && "bg-blue-500"
+                              event.status === "review" && "bg-blue-500",
                             )}
                           />
                         </div>
@@ -444,5 +442,6 @@ export function OrdersManagement() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }
+
